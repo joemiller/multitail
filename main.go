@@ -74,7 +74,7 @@ func parseRecord(record string) (line string, err error) {
 	return line, nil
 }
 
-func tailFile(file string, c color.Attribute, termWidth int, stdoutLock sync.Mutex, done chan bool) {
+func tailFile(file string, c color.Attribute, termWidth int, stdoutLock *sync.Mutex, done chan bool) {
 	defer func() { done <- true }()
 	colorPrintf := color.New(c).PrintfFunc()
 
@@ -105,7 +105,7 @@ func tailFile(file string, c color.Attribute, termWidth int, stdoutLock sync.Mut
 	}
 
 	// throw away the first "line" as it is likely a partial line due to the seeking function of the tail
-	// library being/ byte specific and not line aware. A partial line would fail json parsing when -d is used so
+	// library being byte specific and not line aware. A partial line would fail json parsing when -d is used so
 	// it's best to skip it.
 	<-t.Lines
 
@@ -126,7 +126,6 @@ func tailFile(file string, c color.Attribute, termWidth int, stdoutLock sync.Mut
 		for _, line := range lines {
 			colorPrintf("|%-17s| %s\n", trimFilename(file, 17), line)
 		}
-		os.Stdout.Sync()
 		stdoutLock.Unlock()
 	}
 	err = t.Wait()
@@ -147,7 +146,7 @@ func main() {
 	}
 
 	done := make(chan bool)
-	var stdoutLock sync.Mutex
+	var stdoutLock = &sync.Mutex{}
 
 	for idx, filename := range opts.Positionals.Filenames {
 		c := colors[idx%len(colors)]
